@@ -1,34 +1,45 @@
-import asyncio
+import certifi
 import aiohttp
+import os
+import ssl
 
-# функция для получения роли пользователя
-# ответ роль пользователя
+from dotenv import load_dotenv
 
-
-# Асинхронная функция для регистрации пользователя и получения его роли
-# async def get_role(telegram_id, username, first_name, last_name, phone_number):
-# url = "https://carclicker.ru/api/users/register"
-# payload = {
-#     "telegram_id": telegram_id,
-#     "username": username,
-#     "first_name": first_name,
-#     "last_name": last_name,
-#     "phone_number": phone_number
-# }
-
-# async with aiohttp.ClientSession() as session:
-#     async with session.post(url, json=payload) as response:
-#         if response.status == 200:
-#             data = await response.json()
-#             # Предположим, что в ответе есть поле "role"
-#             return data.get("role", "роль не найдена")
-#         else:
-#             return f"Ошибка: {response.status}"
-async def get_role(da):
-    return "participant"
+load_dotenv()
 
 
-# функция проверки существования интерактива по коду
+# получение роли пользователя
+
+
+async def get_role(message):
+    url = "https://carclicker.ru/api/users/register"
+    params = {
+        "x_key": os.getenv("SECRET_KEY"),
+        "telegram_id": message.from_user.id,
+        "username": message.from_user.username,
+        "first_name": message.from_user.first_name,
+        "last_name": message.from_user.last_name,
+        "phone_number": ""
+    }
+
+    params = {k: v for k, v in params.items() if v is not None}
+
+    # отключает проверку на подлинность ssl сертификата, иначе у меня на машине выдает ошибку
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, params=params, ssl=ssl_context) as response:
+            try:
+                response_data = await response.json()
+            except aiohttp.ContentTypeError:
+                pass
+
+            return response_data.get("role")
+
+
+# функция проверки существования интерактива по коду (пока заглушка)
+
+
 async def check_code_interact(code: str):
     url = "https://carclicker.ru/api/interactivities/join"
     payload = {"code": code}

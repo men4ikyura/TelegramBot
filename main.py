@@ -32,10 +32,11 @@ MAX_ATTEMPTS = 2
 
 @router.message(F.text == "/start")
 async def start_handler(message: Message):
+
     role = await get_role(message)
     first_name = message.from_user.first_name
 
-    if role == "host":
+    if role == "leader":
         greet_text = (
             f"Приятно познакомиться, {first_name}! Вам назначена роль ведущего. "
             "В этом сервисе вы можете создавать, управлять и проводить интерактивы."
@@ -58,7 +59,7 @@ async def start_handler(message: Message):
 
 @router.message(F.text == "Управление интерактивами")
 async def start_cmd(message: Message):
-    if await get_role(message) == "host":
+    if await get_role(message) == "leader":
         await message.answer("Панель управления интерактивами", reply_markup=get_link_to_main_menu())
 
 
@@ -99,25 +100,33 @@ async def handle_start_with_param(message: Message, command: CommandObject):
         return
 
     role = await get_role(message)
+    is_valid_role = True
+    keyboard = None
 
-    greet_text = f"Здравствуйте, {message.from_user.first_name}! Получен код интерактива: {param}"
-
-    if role == "host":
+    if role == "leader":
         keyboard = get_host_keyboard()
+        greeting = f"Получен код интерактива: {param}"
 
     elif role == "participant":
         keyboard = get_member_keyboard()
+        greeting = f"Получен код интерактива: {param}"
 
-    await message.answer(greet_text, reply_markup=keyboard)
-    if await check_code_interact(param):
-        await message.answer(
-            "✅ Код верный! Подключайтесь к интерактиву! Скоро начнем!",
-            reply_markup=get_link_to_interavctive()
-        )
     else:
-        await message.answer(
-            "Код неверный, попробуйте ввести его вручную. Сначала нажмите кнопку \"Подключение к интерактиву \""
-        )
+        is_valid_role = False
+        greeting = "Ваша роль не распознана. Пожалуйста, свяжитесь с администратором."
+
+    await message.answer(greeting, reply_markup=keyboard)
+
+    if is_valid_role:
+        if await check_code_interact(param):
+            await message.answer(
+                "✅ Код верный! Подключайтесь к интерактиву! Скоро начнем!",
+                reply_markup=get_link_to_interavctive()
+            )
+        else:
+            await message.answer(
+                "Код неверный, попробуйте ввести его вручную. Сначала нажмите кнопку \"Подключение к интерактиву\""
+            )
 
 
 dp.include_router(router)
